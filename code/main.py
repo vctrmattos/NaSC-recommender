@@ -197,7 +197,7 @@ class RecommenderEngine(ttk.Frame, Recommender):
                 )
     
     def open_user_window(self):
-            self.new_window = User(ttk.Toplevel("Add user/movies"), self._data_movies, self._data_users)
+            self.new_window = User(ttk.Toplevel("Add user/movies"), self._data_movies, self._data_users, self._data_links)
     
     def get_user_ratings(self, user_id):
         movies_ratings = self._data_users.query(f"user == {user_id}").set_index("item").rating
@@ -208,9 +208,9 @@ class RecommenderEngine(ttk.Frame, Recommender):
         self.set_algorithm(new_algorithm)
         
 class User(ttk.Frame):
-    def __init__(self, master, data_movies, data_users):
+    def __init__(self, master, data_movies, data_users, data_links):
         ttk.Frame.__init__(self, master, padding=15, width=900, height=600)
-        
+        self._data_links = data_links
         self._data_movies = data_movies
         self._data_users = data_users
 
@@ -220,7 +220,7 @@ class User(ttk.Frame):
         self.defaultFont.configure(family="open look cursor",
                                    size=18)
         # application variables
-        self.user_id = ttk.DoubleVar(value=1)
+        self.user_id = ttk.IntVar(value=1)
         self.movie_title = ttk.StringVar()
         self.rating = ttk.DoubleVar()
         # header and labelframe option container
@@ -287,8 +287,7 @@ class User(ttk.Frame):
         self.resultview.heading(1, text='Title', anchor=W)
         self.resultview.heading(2, text='Year', anchor=W)
         self.resultview.heading(3, text='Rating', anchor=W)
-        self.resultview.heading(4, text='Genres', anchor=W)
-        self.resultview.heading(5, text='Votes', anchor=W)
+        self.resultview.heading(4, text='Votes', anchor=W)
         self.resultview.column(
             column=0, 
             anchor=W, 
@@ -317,17 +316,11 @@ class User(ttk.Frame):
             anchor=W, 
             width=utility.scale_size(self, 120)
         )
-        
-        self.resultview.column(
-            column=4, 
-            anchor=W, 
-            width=utility.scale_size(self, 160)
-        )
 
     def add_user_entry(self):
         path_user = (pathlib.Path(__file__) / '..'/'..').resolve()/"data/app_users.csv"
         rating = self.rating.get()
-        user_id = int(self.user_id.get())
+        user_id = self.user_id.get()
         movie_title = self.movie_title.get()
         item = self._data_movies.query(f"title == '{movie_title}'").index[0]
         new_entry = pd.DataFrame({"user":[user_id], "item":[item], "rating":[rating]}, index=[self._last_index + 1])
@@ -346,16 +339,15 @@ class User(ttk.Frame):
         if children != ():
             self.resultview.delete(*children)
 
-        movies = movies.join(self._data_movies.title, on="item")
-        print(movies)
+        movies = movies.join(self._data_movies.title, on="item").join(self._data_links.drop(columns=["imdbId"]), on="item")
 
         for index_, row  in enumerate(movies.values): 
             rank = index_ + 1
             title = row[3]
             score = row[2]
-            release_year = 0
-            runtime = row[2]
-            votes = 0
+            release_year = row[4]
+            runtime = row[5]
+            votes = int(row[6])
             iid = self.resultview.insert(
                     parent='', 
                     index=END, 

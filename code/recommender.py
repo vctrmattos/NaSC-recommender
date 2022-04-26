@@ -17,7 +17,6 @@ class Recommender:
         recs = self._algorithm.recommend(-1, n_recs*10,ratings=movies)
         recs = recs.join(self._data_movies.title, on="item").join(self._data_links.drop(columns=["imdbId"]), on="item")
         year = datetime.datetime.today().year
-        recs.votes = recs.votes.astype(int)
         recs = recs.dropna()
         recs.score =    recs.score + \
                         np.log(recs.votes)*pop_bias/50 + \
